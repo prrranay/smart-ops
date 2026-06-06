@@ -52,11 +52,14 @@ const authRouter = Router();
 
 /**
  * @openapi
- * /api/v1/auth/signup:
+ * /api/v1/auth/members:
  *   post:
- *     summary: Register a new user account
+ *     summary: Create a new team member
+ *     description: Restricted to ADMIN and MANAGER roles.
  *     tags:
  *       - Authentication
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -81,15 +84,15 @@ const authRouter = Router();
  *                 type: string
  *                 format: password
  *                 example: SecureP@ss123
- *                 description: Must be at least 8 characters, with 1 uppercase, 1 lowercase, 1 number, and 1 special symbol.
+ *                 description: Must be at least 8 characters.
  *               role:
  *                 type: string
  *                 enum: [USER, ADMIN, MANAGER]
  *                 example: USER
- *                 description: Optional user role (defaults to USER).
+ *                 description: User role (defaults to USER).
  *     responses:
  *       201:
- *         description: User registered successfully
+ *         description: Member created successfully
  *         content:
  *           application/json:
  *             schema:
@@ -99,9 +102,16 @@ const authRouter = Router();
  *                   type: string
  *                   example: success
  *                 data:
- *                   $ref: '#/components/schemas/AuthResponse'
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
  *       400:
  *         description: Validation failed or request payload is invalid
+ *       401:
+ *         description: Unauthorized - missing or invalid token
+ *       403:
+ *         description: Forbidden - insufficient permissions
  *       409:
  *         description: Conflict - email is already in use
  */

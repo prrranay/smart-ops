@@ -38,6 +38,11 @@ app.use(express.urlencoded({ extended: true }));
 
   app.use(loggingMiddleware);
 
+// root route
+app.get('/', (req, res) => {
+  res.json({ status: 'success', message: 'Smart Ops Backend API is running' });
+});
+
 // swagger docs
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 

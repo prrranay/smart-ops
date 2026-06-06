@@ -14,10 +14,11 @@ export class AuthController {
    * Helper to set access token cookie
    */
   private setAccessTokenCookie(res: Response, token: string): void {
+    const isProd = process.env.NODE_ENV === 'production';
     res.cookie('accessToken', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000, // 1 day (matches 1d expiry)
     });
   }
@@ -26,10 +27,11 @@ export class AuthController {
    * Helper to clear access token cookie
    */
   private clearAccessTokenCookie(res: Response): void {
+    const isProd = process.env.NODE_ENV === 'production';
     res.clearCookie('accessToken', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
     });
   }
 
@@ -37,10 +39,11 @@ export class AuthController {
    * Helper to set refresh token cookie
    */
   private setRefreshTokenCookie(res: Response, token: string): void {
+    const isProd = process.env.NODE_ENV === 'production';
     res.cookie('refreshToken', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
   }
@@ -49,10 +52,11 @@ export class AuthController {
    * Helper to clear refresh token cookie
    */
   private clearRefreshTokenCookie(res: Response): void {
+    const isProd = process.env.NODE_ENV === 'production';
     res.clearCookie('refreshToken', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
     });
   }
 

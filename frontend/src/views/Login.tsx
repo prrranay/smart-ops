@@ -43,6 +43,14 @@ export default function Login() {
     },
   })
 
+  const onInvalid = (errors: any) => {
+    Object.values(errors).forEach((err: any) => {
+      if (err.message) {
+        toast(err.message, "error")
+      }
+    })
+  }
+
   const onSubmit = async (data: FormVals) => {
     setErrVal(null)
     setIsSubmitting(true)
@@ -82,7 +90,7 @@ export default function Login() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
               {errVal && (
                 <div className="flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/5 dark:bg-destructive/10 p-3 text-xs text-destructive dark:text-red-400">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />

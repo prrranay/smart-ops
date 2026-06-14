@@ -230,15 +230,37 @@ export function TaskDetailModal({ taskId, open, onClose }: TaskDetailModalProps)
 
   // Inline edit handlers
   const saveTitle = () => {
-    if (editedTitle.trim() && editedTitle !== task?.title) {
-      updateTaskMutation.mutate({ title: editedTitle.trim() })
+    const trimmed = editedTitle.trim()
+    if (!trimmed) {
+      toast("Task title is required", "error")
+      return
+    }
+    if (trimmed.length < 3) {
+      toast("Task title must be at least 3 characters long", "error")
+      return
+    }
+    if (trimmed.length > 100) {
+      toast("Task title cannot exceed 100 characters", "error")
+      return
+    }
+    if (trimmed !== task?.title) {
+      updateTaskMutation.mutate({ title: trimmed })
     }
     setIsEditingTitle(false)
   }
 
   const saveDesc = () => {
-    if (editedDesc.trim() && editedDesc !== task?.description) {
-      updateTaskMutation.mutate({ description: editedDesc.trim() })
+    const trimmed = editedDesc.trim()
+    if (!trimmed) {
+      toast("Task description is required", "error")
+      return
+    }
+    if (trimmed.length > 1000) {
+      toast("Task description cannot exceed 1000 characters", "error")
+      return
+    }
+    if (trimmed !== task?.description) {
+      updateTaskMutation.mutate({ description: trimmed })
     }
     setIsEditingDesc(false)
   }
@@ -246,9 +268,16 @@ export function TaskDetailModal({ taskId, open, onClose }: TaskDetailModalProps)
   const submitComment = (e: React.FormEvent) => {
     e.preventDefault()
     setCommentError(null)
-    if (newComment.trim()) {
-      addCommentMutation.mutate(newComment.trim())
+    const trimmed = newComment.trim()
+    if (!trimmed) {
+      toast("Comment content cannot be empty", "error")
+      return
     }
+    if (trimmed.length > 1000) {
+      toast("Comment content cannot exceed 1000 characters", "error")
+      return
+    }
+    addCommentMutation.mutate(trimmed)
   }
 
   const formatActivityAction = (act: string) => {

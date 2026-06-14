@@ -1,6 +1,9 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Navigate, useNavigate } from "react-router-dom"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import { api } from "@/config/axios"
 import { useAuth } from "@/hooks/useAuth"
 import { useToast } from "@/hooks/useToast"
@@ -12,6 +15,27 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Modal } from "@/components/ui/modal"
 import { ShieldAlert, BookOpen, Flame, Plus, UserPlus, Loader2 } from "lucide-react"
+
+const signupSchema = z.object({
+  name: z
+    .string()
+    .min(2, "Name must be at least 2 characters long")
+    .max(100, "Name must not exceed 100 characters"),
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Please enter a valid email address"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters long")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+  role: z.enum(["USER", "ADMIN", "MANAGER"]),
+})
+
+type SignupFormValues = z.infer<typeof signupSchema>
 
 interface UserWorkloadItem {
   userId: string
@@ -28,12 +52,31 @@ export default function Team() {
   const { toast } = useToast()
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [role, setRole] = useState<"USER" | "MANAGER" | "ADMIN">("USER")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      role: "USER",
+    },
+  })
+
+  const onInvalid = (errors: any) => {
+    Object.values(errors).forEach((err: any) => {
+      if (err.message) {
+        toast(err.message, "error")
+      }
+    })
+  }
 
   const {
     data: workload,
@@ -56,25 +99,16 @@ export default function Team() {
   const hasOverloaded = overloaded.length > 0
   const isManagerOrAdmin = curUser?.role === "ADMIN" || curUser?.role === "MANAGER"
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (data: SignupFormValues) => {
     setFormError(null)
     setIsSubmitting(true)
     
     try {
-      await api.post("/auth/members", {
-        name,
-        email,
-        password,
-        role
-      })
+      await api.post("/auth/members", data)
       
       toast("Team member added successfully!", "success")
       setIsAddModalOpen(false)
-      setName("")
-      setEmail("")
-      setPassword("")
-      setRole("USER")
+      reset()
       
       refetch()
     } catch (err: any) {
@@ -84,6 +118,12 @@ export default function Team() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const onCloseModal = () => {
+    setIsAddModalOpen(false)
+    reset()
+    setFormError(null)
   }
 
   if (isLoading) return <LoadingState message="Retrieving operations workload data..." />
@@ -227,11 +267,11 @@ export default function Team() {
 
       <Modal
         open={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
+        onClose={onCloseModal}
         title="Add Team Member"
         description="Create a new operator account for your organization."
       >
-        <form onSubmit={onSubmit} className="space-y-4 pt-2">
+        <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4 pt-2">
           {formError && (
             <div className="p-3 rounded-lg border border-destructive/20 bg-destructive/5 text-destructive text-xs">
               {formError}
@@ -239,68 +279,88 @@ export default function Team() {
           )}
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-zinc-650 dark:text-zinc-300">
+            <label htmlFor="name" className="text-xs font-semibold text-zinc-650 dark:text-zinc-300">
               Full Name
             </label>
             <Input
-              required
+              id="name"
               type="text"
               placeholder="e.g. Alex Johnson"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
               disabled={isSubmitting}
+              {...register("name")}
             />
+            {errors.name && (
+              <p className="text-[11px] text-destructive dark:text-red-400 font-medium">
+                {errors.name.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-zinc-650 dark:text-zinc-300">
+            <label htmlFor="email" className="text-xs font-semibold text-zinc-650 dark:text-zinc-300">
               Email Address
             </label>
             <Input
-              required
+              id="email"
               type="email"
               placeholder="e.g. alex@ops.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              className={errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
               disabled={isSubmitting}
+              {...register("email")}
             />
+            {errors.email && (
+              <p className="text-[11px] text-destructive dark:text-red-400 font-medium">
+                {errors.email.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-zinc-650 dark:text-zinc-300">
+            <label htmlFor="password" className="text-xs font-semibold text-zinc-650 dark:text-zinc-300">
               Password
             </label>
             <Input
-              required
+              id="password"
               type="password"
               placeholder="Min 8 chars, 1 uppercase, 1 number, 1 special char"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              className={errors.password ? "border-destructive focus-visible:ring-destructive" : ""}
               disabled={isSubmitting}
+              {...register("password")}
             />
+            {errors.password && (
+              <p className="text-[11px] text-destructive dark:text-red-400 font-medium">
+                {errors.password.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-zinc-650 dark:text-zinc-300">
+            <label htmlFor="role" className="text-xs font-semibold text-zinc-650 dark:text-zinc-300">
               Organization Role
             </label>
             <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as any)}
+              id="role"
               disabled={isSubmitting}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800"
+              {...register("role")}
             >
               <option value="USER" className="dark:bg-zinc-900">Operator (USER)</option>
               <option value="MANAGER" className="dark:bg-zinc-900">Manager (MANAGER)</option>
               <option value="ADMIN" className="dark:bg-zinc-900">Admin (ADMIN)</option>
             </select>
+            {errors.role && (
+              <p className="text-[11px] text-destructive dark:text-red-400 font-medium">
+                {errors.role.message}
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-zinc-150 dark:border-zinc-800">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsAddModalOpen(false)}
+              onClick={onCloseModal}
               disabled={isSubmitting}
             >
               Cancel

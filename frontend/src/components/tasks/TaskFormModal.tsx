@@ -11,21 +11,37 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, RotateCcw, Loader2 } from "lucide-react"
 
+import { useToast } from "@/hooks/useToast"
+
 // Zod schema for task forms
 const taskSchema = z.object({
   title: z
     .string()
-    .min(1, "Title is required")
+    .min(3, "Title must be at least 3 characters long")
     .max(100, "Title must not exceed 100 characters"),
   description: z
     .string()
-    .min(1, "Description is required"),
+    .min(1, "Description is required")
+    .max(1000, "Description must not exceed 1000 characters"),
   priority: z.enum(["LOW", "MEDIUM", "HIGH"]),
   assignedTo: z.string().nullable().transform(val => val === "unassigned" || val === "" ? null : val),
   dueDate: z
     .string()
     .nullable()
-    .transform(val => val === "" ? null : val),
+    .refine(
+      (val) => {
+        if (!val || val === "") return true
+        const selectedDate = new Date(val)
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        selectedDate.setHours(0, 0, 0, 0)
+        return selectedDate.getTime() >= today.getTime()
+      },
+      {
+        message: "Due date cannot be in the past",
+      }
+    )
+    .transform((val) => (val === "" ? null : val)),
 })
 
 type TaskFormValues = z.infer<typeof taskSchema>
@@ -43,6 +59,10 @@ interface Task {
   priority: "LOW" | "MEDIUM" | "HIGH"
   dueDate: string | null
   assignedTo: string | null
+  assignee?: {
+    id: string
+    name: string
+  } | null
 }
 
 interface TaskFormModalProps {
@@ -53,10 +73,19 @@ interface TaskFormModalProps {
 }
 
 export function TaskFormModal({ open, onClose, task, onSuccess }: TaskFormModalProps) {
+  const { toast } = useToast()
   const isMobile = useMediaQuery("(max-width: 768px)")
   const queryClient = useQueryClient()
   const [globalError, setGlobalError] = useState<string | null>(null)
   const [hasDraft, setHasDraft] = useState(false)
+
+  const onInvalid = (errors: any) => {
+    Object.values(errors).forEach((err: any) => {
+      if (err.message) {
+        toast(err.message, "error")
+      }
+    })
+  }
 
   // Fetch active users list from workload endpoint for the assignee dropdown
   const { data: usersData } = useQuery<UserWorkload[]>({
@@ -182,7 +211,9 @@ export function TaskFormModal({ open, onClose, task, onSuccess }: TaskFormModalP
       onClose()
     },
     onError: (err: any) => {
-      setGlobalError(err.message || "Failed to create task.")
+      const msg = err.message || "Failed to create task."
+      setGlobalError(msg)
+      toast(msg, "error")
     }
   })
 
@@ -215,7 +246,9 @@ export function TaskFormModal({ open, onClose, task, onSuccess }: TaskFormModalP
       onClose()
     },
     onError: (err: any) => {
-      setGlobalError(err.message || "Failed to save changes.")
+      const msg = err.message || "Failed to save changes."
+      setGlobalError(msg)
+      toast(msg, "error")
     }
   })
 
@@ -265,7 +298,7 @@ export function TaskFormModal({ open, onClose, task, onSuccess }: TaskFormModalP
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-left">
+        <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4 text-left">
           {/* Title */}
           <div className="space-y-1.5">
             <label htmlFor="title" className="text-xs font-semibold text-zinc-650 dark:text-zinc-300">
@@ -332,6 +365,7 @@ export function TaskFormModal({ open, onClose, task, onSuccess }: TaskFormModalP
                 id="dueDate"
                 type="date"
                 disabled={isSubmitting}
+                min={new Date().toISOString().split("T")[0]}
                 className={errors.dueDate ? "border-destructive focus-visible:ring-destructive" : ""}
                 {...register("dueDate")}
               />
@@ -355,6 +389,12 @@ export function TaskFormModal({ open, onClose, task, onSuccess }: TaskFormModalP
               {...register("assignedTo")}
             >
               <option value="unassigned">Unassigned (None)</option>
+              {/* Ensure current assignee is always available as an option to prevent accidental unassignment */}
+              {task?.assignedTo && task?.assignee && !usersData?.some((u) => u.userId === task.assignedTo) && (
+                <option value={task.assignedTo}>
+                  {task.assignee.name}
+                </option>
+              )}
               {usersData?.map((user) => (
                 <option key={user.userId} value={user.userId}>
                   {user.userName}

@@ -17,11 +17,13 @@ export const createTaskSchema = z.object({
     dueDate: z
       .string()
       .datetime({ message: 'Due date must be a valid ISO-8601 date string' })
-      .transform((val) => new Date(val))
-      .optional(),
+      .nullable()
+      .optional()
+      .transform((val) => (val ? new Date(val) : null)),
     assignedTo: z
       .string()
       .uuid({ message: 'Assigned user ID must be a valid UUID' })
+      .nullable()
       .optional(),
   }),
 });
@@ -47,8 +49,9 @@ export const updateTaskSchema = z.object({
       dueDate: z
         .string()
         .datetime({ message: 'Due date must be a valid ISO-8601 date string' })
-        .transform((val) => new Date(val))
-        .optional(),
+        .nullable()
+        .optional()
+        .transform((val) => (val ? new Date(val) : null)),
     })
     .strict(),
 });
